@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk Cosmic Safety Guide</title>
+    <style>
+        :root {
+            --neon-pink: #ff2a74;
+            --neon-blue: #00f0ff;
+            --neon-purple: #9d4edd;
+            --neon-orange: #ff6b35;
+            --space-dark: #0a0915;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--space-dark);
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+        }
+
+        /* 360 Sphere/Sky Container */
+        #sky-viewport {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            perspective: 800px;
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        #sky-viewport:active {
+            cursor: grabbing;
+        }
+
+        /* The actual canvas wrapping the space elements */
+        #space-horizon {
+            position: absolute;
+            width: 300%;
+            height: 300%;
+            top: -100%;
+            left: -100%;
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* Calm Background Neon Grid Overlay */
+        .cyber-grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+            background-position: center;
+            transform: translateZ(-200px);
+            pointer-events: none;
+        }
+
+        /* Ambient Cosmic Background Elements */
+        .ambient-svg {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.25;
+            filter: drop-shadow(0 0 8px var(--neon-purple));
+            animation: drift 25s infinite linear;
+        }
+
+        /* Interactive Guide Node */
+        #guide-constellation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .guide-star {
+            width: 90px;
+            height: 90px;
+            cursor: pointer;
+            filter: drop-shadow(0 0 15px var(--neon-pink));
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        .guide-star:hover {
+            transform: scale(1.15);
+        }
+
+        /* Interface Overlay HUD */
+        #hud-panel {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 500px;
+            background: rgba(10, 9, 21, 0.85);
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            z-index: 20;
+            backdrop-filter: blur(8px);
+            pointer-events: auto;
+        }
+
+        .hud-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--neon-blue);
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .hud-text {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #e0e0ff;
+            min-height: 70px;
+        }
+
+        .hud-instruction {
+            font-size: 11px;
+            color: #64648c;
+            margin-top: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Connected Safety Ring Visual Container */
+        #safety-matrix {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .safety-ring-line {
+            stroke: var(--neon-orange);
+            stroke-width: 2;
+            stroke-dasharray: 8 4;
+            animation: dash 30s linear infinite;
+            filter: drop-shadow(0 0 12px var(--neon-orange));
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px var(--neon-pink)); }
+            50% { transform: scale(1.06); filter: drop-shadow(0 0 25px var(--neon-pink)); }
+        }
+
+        @keyframes drift {
+            0% { transform: rotate(0deg) translate(0, 0) scale(1); }
+            50% { transform: rotate(180deg) translate(15px, -30px) scale(1.05); }
+            100% { transform: rotate(360deg) translate(0, 0) scale(1); }
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+
+        /* Utility hints for navigation */
+        .interaction-hint {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="interaction-hint">← DRAG SPACE TO PAN 360° SKY →</div>
+
+    <div id="sky-viewport">
+        <div id="space-horizon">
+            <!-- Calm Cyber Grid Backplane -->
+            <div class="cyber-grid"></div>
+            
+            <!-- Dynamic Neon SVGs will populate here via JS -->
+            <div id="ambient-layer"></div>
+
+            <!-- Dynamic SVG layer for safety ring connection links -->
+            <svg id="safety-matrix" width="100%" height="100%"></svg>
+
+            <!-- Interactive Constellation Centerpoint -->
+            <div id="guide-constellation">
+                <!-- Glowing Cosmic Star Guide -->
+                <svg class="guide-star" viewBox="0 0 24 24" fill="none" onclick="advanceGuide()">
+                    <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" fill="#ff2a74" />
+                    <circle cx="12" cy="12" r="3" fill="#ffffff"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- HUD Text Display Panel -->
+    <div id="hud-panel">
+        <div class="hud-title" id="step-title">System Calibrating</div>
+        <div class="hud-text" id="step-desc">Breathe in. The flashing codes are just a temporary reflection. Your true data lives safely deeper down. Click the central pink guide star to sync your mind.</div>
+        <div class="hud-instruction" id="step-action">TAP THE FLOATING GUIDE STAR TO ADVANCE</div>
+    </div>
+
+    <script>
+        // Immersive Guide Text Sequences
+        const guideSteps = [
+            {
+                title: "01 // Anchoring Your Focus",
+                desc: "Take a slow, deep breath. A software interface failure can make everything look broken or lost, but your actual code creations remain protected in cold storage databases.",
+                color: "#ff2a74"
+            },
+            {
+                title: "02 // Breaking The Local Loop",
+                desc: "The duplicate timelines on your screen are just an application cache loop. Your work isn't overwritten—the site is simply projecting the same frozen frame.",
+                color: "#00f0ff"
+            },
+            {
+                title: "03 // Initializing Google Takeout",
+                desc: "When your phone space allows, navigating directly to ://google.com will compile and pull your real, raw chronological text data without using the broken sidebar app interface.",
+                color: "#9d4edd"
+            },
+            {
+                title: "04 // Connecting the Matrix",
+                desc: "Let the interface rollbacks do their work on Google's network architecture over the next 24 hours. Your core files remain safely indexed away from local system limits.",
+                color: "#ffbb00"
+            },
+            {
+                title: "05 // Orange Rabbit Safety Ring",
+                desc: "The loop breaks. The constellation locks. Your workspace data parameters are safe, structural, and secure. Grounding complete.",
+                color: "#ff6b35"
+            }
+        ];
+
+        let currentStep = 0;
+        const horizon = document.getElementById('space-horizon');
+        const ambientLayer = document.getElementById('ambient-layer');
+        const safetyMatrix = document.getElementById('safety-matrix');
+        const starPolygon = document.querySelector('.guide-star polygon');
+        
+        // 360 Drag Tracking state
+        let isDragging = false;
+        let startX, startY;
+        let regX = -100, regY = -100;
+        let rotX = 0, rotY = 0;
+
+        // Viewport Dragging Mechanics for 360 feel
+        const viewport = document.getElementById('sky-viewport');
+        viewport.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX - rotY;
+            startY = e.clientY - rotX;
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+        
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            rotY = e.clientX - startX;
+            rotX = e.clientY - startY;
+            // Apply bounding angles to simulate looking around a modern retro celestial viewport
+            horizon.style.transform = `rotateX(${rotX * 0.15}deg) rotateY(${rotY * 0.15}deg)`;
+        });
+
+      // Mobile Touch Supportviewport.addEventListener('touchstart', (e) => {isDragging = true;startX = e.touches[0].clientX - rotY;startY = e.touches[0].clientY - rotX;});window.addEventListener('touchend', () => isDragging = false);viewport.addEventListener('touchmove', (e) => {if (!isDragging) return;rotY = e.touches[0].clientX - startX;rotX = e.touches[0].clientY - startY;horizon.style.transform = rotateX(${rotX * 0.1}deg) rotateY(${rotY * 0.1}deg);});// Generate peaceful background vector cyber shapes (Bunnies, Moons, Constellations)const assets = [// Neon Bunny Shape<path d="M10,30 Q5,15 12,5 Q18,5 18,22 Q23,5 30,5 Q35,15 30,30 Q35,45 35,55 Q35,65 20,65 Q5,65 5,55 Q5,45 10,30 Z" fill="none" stroke="currentColor" stroke-width="1.5"/>,// Cyber Moon Shape<path d="M10,5 A25,25 0 1,0 45,40 A20,20 0 1,1 10,5 Z" fill="none" stroke="currentColor" stroke-width="1.5"/>,// Cross Star<path d="M25,0 L25,50 M0,25 L50,25 M15,15 L35,35 M15,35 L35,15" fill="none" stroke="currentColor" stroke-width="1"/>];function populateCosmos() {const count = 26; // Gentle dense configurationconst colors = ['var(--neon-pink)', 'var(--neon-blue)', 'var(--neon-purple)', 'var(--neon-orange)'];for(let i=0; i<count; i++) {const svg = document.createElementNS("w3.org", "svg");svg.setAttribute('class', 'ambient-svg');svg.setAttribute('viewBox', '0 0 60 70');svg.style.width = ${Math.random() * 35 + 20}px;svg.style.height = auto;// Absolute structural layout distribution across the wide horizon fieldsvg.style.left = ${Math.random() * 260 + 20}%;svg.style.top = ${Math.random() * 260 + 20}%;svg.style.color = colors[Math.floor(Math.random() * colors.length)];// Randomize asset shape typessvg.innerHTML = assets[Math.floor(Math.random() * assets.length)];svg.style.animationDelay = ${Math.random() * -30}s;svg.style.animationDuration = ${Math.random() * 20 + 20}s;ambientLayer.appendChild(svg);}}// Logic progression system tracking milestones to output safety ring configurationfunction advanceGuide() {currentStep++;if(currentStep >= guideSteps.length) {// Loop back gracefully to safe mode statecurrentStep = 0;clearSafetyRing();}const activeData = guideSteps[currentStep];// UI Engine Color Shift & HUD Syncdocument.getElementById('step-title').innerText = activeData.title;document.getElementById('step-desc').innerText = activeData.desc;document.querySelector('.guide-star').style.filter = drop-shadow(0 0 20px ${activeData.color});starPolygon.setAttribute('fill', activeData.color);// Final step triggers the structural orange rabbit safety ring connection sequenceif(currentStep === guideSteps.length - 1) {renderSafetyRing();}}function renderSafetyRing() {safetyMatrix.innerHTML = ''; // Sanitize matrix spaceconst w = window.innerWidth * 3;const h = window.innerHeight * 3;safetyMatrix.setAttribute('viewBox', 0 0 ${w} ${h});// Build absolute geometric node positions forming an overlapping circular defensive matrixconst nodes = 12;const centerX = w / 2;const centerY = h / 2;const radius = 240;let pointsStr = [];for(let i=0; i<=nodes; i++) {let angle = (i / nodes) * 2 * Math.PI;let x = centerX + radius * Math.cos(angle);let y = centerY + radius * Math.sin(angle);pointsStr.push({x, y});}// Generate glowing ring connection elements visually linking across coordinateslet polyline = document.createElementNS("w3.org", "polyline");let pathData = pointsStr.map(p => ${p.x},${p.y}).join(' ');polyline.setAttribute('points', pathData);polyline.setAttribute('class', 'safety-ring-line');polyline.style.opacity = '1';safetyMatrix.appendChild(polyline);document.getElementById('step-action').innerText = "PROTECTIVE MATRIX SECURED // TAP TO RESTART";document.getElementById('step-action').style.color = "var(--neon-orange)";}function clearSafetyRing() {safetyMatrix.innerHTML = '';document.getElementById('step-action').innerText = "TAP THE FLOATING GUIDE STAR TO ADVANCE";document.getElementById('step-action').style.color = "#64648c";}// Initialize Cyber Space layoutpopulateCosmos();
