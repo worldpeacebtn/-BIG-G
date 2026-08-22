@@ -276,9 +276,17 @@
             <svg id="safety-matrix" width="100%" height="100%"></svg>
 
             <!-- Interactive Constellation Centerpoint -->
-            <div id="guide-constellation">
-                <!-- Glowing Cosmic Star Guide -->
-                <svg class="guide-star" viewBox="0 0 24 24" fill="none" onclick="advanceGuide()">
+<div id="guide-constellation">
+    <!-- Glowing Cosmic Star Guide Wrap -->
+    <a href="javascript:void(0)" onclick="advanceGuide(); return false;" style="-webkit-tap-highlight-color: transparent;">
+        <svg class="guide-star" viewBox="0 0 24 24" fill="none">
+            <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" fill="#ff2a74" />
+            <circle cx="12" cy="12" r="3" fill="#ffffff"/>
+        </svg>
+    </a>
+</div>
+
+            
                     <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" fill="#ff2a74" />
                     <circle cx="12" cy="12" r="3" fill="#ffffff"/>
                 </svg>
