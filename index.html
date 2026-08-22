@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyberpunk Cosmic Safety Guide</title>
+    <style>
+        :root {
+            --neon-pink: #ff2a74;
+            --neon-blue: #00f0ff;
+            --neon-purple: #9d4edd;
+            --neon-orange: #ff6b35;
+            --space-dark: #0a0915;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--space-dark);
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+            cursor: grab;
+        }
+
+        body.grabbing {
+            cursor: grabbing;
+        }
+
+        /* 360 Sphere/Sky Container */
+        #sky-viewport {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            perspective: 800px;
+            overflow: hidden;
+        }
+
+        /* The actual canvas wrapping the space elements */
+        #space-horizon {
+            position: absolute;
+            width: 300%;
+            height: 300%;
+            top: -100%;
+            left: -100%;
+            transform-style: preserve-3d;
+            transition: transform 0.2s cubic-bezier(0.1, 0.8, 0.2, 1);
+            transform: rotateX(0deg) rotateY(0deg);
+        }
+
+        /* Starfield background – rotates with the sky */
+        #space-horizon::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.6), transparent),
+                radial-gradient(1px 1px at 60% 20%, rgba(255,255,255,0.7), transparent),
+                radial-gradient(1px 1px at 80% 80%, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 10% 90%, rgba(255,255,255,0.9), transparent),
+                radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.4), transparent),
+                radial-gradient(1px 1px at 90% 10%, rgba(255,255,255,0.8), transparent),
+                radial-gradient(2px 2px at 30% 50%, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 50% 80%, rgba(255,255,255,0.7), transparent);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Calm Background Neon Grid Overlay */
+        .cyber-grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+            background-position: center;
+            transform: translateZ(-200px);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Ambient Cosmic Background Elements */
+        .ambient-svg {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.25;
+            filter: drop-shadow(0 0 8px var(--neon-purple));
+            animation: drift 25s infinite linear;
+            z-index: 2;
+        }
+
+        /* Interactive Guide Node */
+        #guide-constellation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .guide-star {
+            width: 95px;
+            height: 95px;
+            cursor: pointer;
+            filter: drop-shadow(0 0 15px var(--neon-pink));
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: pulse 2s infinite ease-in-out;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Interface Overlay HUD */
+        #hud-panel {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 480px;
+            background: rgba(10, 9, 21, 0.9);
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            z-index: 20;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .hud-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--neon-blue);
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .hud-text {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #e0e0ff;
+            min-height: 75px;
+        }
+
+        .hud-instruction {
+            font-size: 9px;
+            color: #64648c;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Connected Safety Ring Visual Container */
+        #safety-matrix {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .safety-ring-line {
+            stroke: var(--neon-orange);
+            stroke-width: 2.5;
+            stroke-dasharray: 8 4;
+            animation: dash 30s linear infinite;
+            filter: drop-shadow(0 0 12px var(--neon-orange));
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        /* Fixed Gaming Controller Touch Pads */
+        .dpad-container {
+            position: absolute;
+            bottom: 20px;
+            width: 80px;
+            height: 80px;
+            z-index: 30;
+        }
+
+        #dpad-left-zone { left: 20px; }
+        #dpad-right-zone { right: 20px; }
+
+        .ctrl-btn {
+            position: absolute;
+            background: rgba(20, 18, 40, 0.85);
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+            color: var(--neon-blue);
+            font-family: monospace;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            width: 36px;
+            height: 36px;
+            font-size: 14px;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+        }
+
+        .ctrl-btn:active {
+            background: var(--neon-blue);
+            color: var(--space-dark);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .btn-up    { top: 0; left: 22px; }
+        .btn-down  { bottom: 0; left: 22px; }
+        .btn-left  { top: 22px; left: 0; }
+        .btn-right { top: 22px; right: 0; }
+
+        #audio-toggle-indicator {
+            position: absolute;
+            top: 55px;
+            width: 100%;
+            text-align: center;
+            font-size: 9px;
+            letter-spacing: 1px;
+            color: var(--neon-blue);
+            opacity: 0.6;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        /* Vignette overlay for depth */
+        #vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+            z-index: 15;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px var(--neon-pink)); }
+            50% { transform: scale(1.04); filter: drop-shadow(0 0 22px var(--neon-pink)); }
+        }
+
+        @keyframes drift {
+            0% { transform: rotate(0deg) translate(0, 0) scale(1); }
+            50% { transform: rotate(180deg) translate(15px, -30px) scale(1.05); }
+            100% { transform: rotate(360deg) translate(0, 0) scale(1); }
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+
+        .interaction-hint {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+            pointer-events: none;
+            z-index: 25;
+        }
+
+        .reset-hint {
+            position: absolute;
+            bottom: 8px;
+            width: 100%;
+            text-align: center;
+            font-size: 8px;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.3);
+            pointer-events: none;
+            z-index: 25;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="interaction-hint">USE CORNER CONTROLLERS OR DRAG TO ROTATE VIEW 360°</div>
+    <div id="audio-toggle-indicator">Audio synchronizes upon interaction</div>
+    <div class="reset-hint">Double‑click / double‑tap center to reset view</div>
+
+    <!-- Controller Overlay Left Wheel -->
+    <div class="dpad-container" id="dpad-left-zone">
+        <div class="ctrl-btn btn-up" onclick="rotateSky('up')">▲</div>
+        <div class="ctrl-btn btn-down" onclick="rotateSky('down')">▼</div>
+    </div>
+
+    <!-- Controller Overlay Right Wheel -->
+    <div class="dpad-container" id="dpad-right-zone">
+        <div class="ctrl-btn btn-left" onclick="rotateSky('left')">◀</div>
+        <div class="ctrl-btn btn-right" onclick="rotateSky('right')">▶</div>
+    </div>
+
+    <div id="sky-viewport">
+        <div id="space-horizon">
+            <!-- Calm Cyber Grid Backplane -->
+            <div class="cyber-grid"></div>
+
+            <!-- Dynamic Neon SVGs populate here via JS -->
+            <div id="ambient-layer"></div>
+
+            <!-- Dynamic SVG layer for safety ring connection links -->
+            <svg id="safety-matrix" width="100%" height="100%"></svg>
+
+            <!-- Interactive Constellation Centerpoint -->
+            <div id="guide-constellation">
+                <a href="javascript:void(0)" onclick="advanceGuide(); return false;" style="-webkit-tap-highlight-color: transparent;">
+                    <svg class="guide-star" viewBox="0 0 24 24" fill="none">
+                        <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" fill="#ff2a74" />
+                        <circle cx="12" cy="12" r="3" fill="#ffffff"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vignette overlay -->
+    <div id="vignette"></div>
+
+    <!-- HUD Text Display Panel -->
+    <div id="hud-panel">
+        <div class="hud-title" id="step-title">System Calibrating</div>
+        <div class="hud-text" id="step-desc">Breathe in. The flashing codes are just a temporary reflection. Your true data lives safely deeper down. Click the central pink guide star to sync your mind.</div>
+        <div class="hud-instruction" id="step-action">TAP THE FLOATING GUIDE STAR TO ADVANCE</div>
+    </div>
+
+    <script>
+        // Immersive Guide Text Sequences
+        const guideSteps = [
+            {
+                title: "01 // Anchoring Your Focus",
+                desc: "Take a slow, deep breath. A software interface failure can make everything look broken or lost, but your actual code creations remain protected in cold storage databases.",
+                color: "#ff2a74"
+            },
+            {
+                title: "02 // Breaking The Local Loop",
+                desc: "The duplicate timelines on your screen are just an application cache loop. Your work isn't overwritten—the site is simply projecting the same frozen frame.",
+                color: "#00f0ff"
+            },
+            {
+                title: "03 // Initializing Google Takeout",
+                desc: "When your phone space allows, navigating directly to google.com will compile and pull your real, raw chronological text data without using the broken sidebar app interface.",
+                color: "#9d4edd"
+            },
+            {
+                title: "04 // Connecting the Matrix",
+                desc: "Let the interface rollbacks do their work on Google's network architecture over the next 24 hours. Your core files remain safely indexed away from local system limits.",
+                color: "#ffbb00"
+            },
+            {
+                title: "05 // Orange Rabbit Safety Ring",
+                desc: "The loop breaks. The constellation locks. Your workspace data parameters are safe, structural, and secure. Grounding complete.",
+                color: "#ff6b35"
+            }
+        ];
+
+        let currentStep = 0;
+        const horizon = document.getElementById('space-horizon');
+        const ambientLayer = document.getElementById('ambient-layer');
+        const safetyMatrix = document.getElementById('safety-matrix');
+        const starPolygon = document.querySelector('.guide-star polygon');
+
+        // Spherical Navigation Tracking variables
+        let rotX = 0;
+        let rotY = 0;
+        let isDragging = false;
+        let lastPointerX = 0;
+        let lastPointerY = 0;
+
+        // Sound System Processing Core
+        let audioCtx = null;
+        let ambientGain = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            ambientGain = audioCtx.createGain();
+            ambientGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+
+            const osc1 = audioCtx.createOscillator();
+            osc1.type = 'sawtooth';
+            osc1.frequency.setValueAtTime(55, audioCtx.currentTime);
+            const osc2 = audioCtx.createOscillator();
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(55.5, audioCtx.currentTime);
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(180, audioCtx.currentTime);
+
+            osc1.connect(filter);
+            osc2.connect(filter);
+            filter.connect(ambientGain);
+            ambientGain.connect(audioCtx.destination);
+
+            osc1.start();
+            osc2.start();
+
+            document.getElementById('audio-toggle-indicator').innerText = "AUDIO MODE: ENGINE SYNCHRONIZED";
+            document.getElementById('audio-toggle-indicator').style.color = "var(--neon-pink)";
+        }
+
+        function playChime(frequency) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+
+            const chimeGain = audioCtx.createGain();
+            chimeGain.gain.setValueAtTime(0, now);
+            chimeGain.gain.linearRampToValueAtTime(0.25, now + 0.02);
+            chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(frequency, now);
+
+            const overtone = audioCtx.createOscillator();
+            overtone.type = 'sine';
+            overtone.frequency.setValueAtTime(frequency * 1.5, now);
+
+            const chimeFilter = audioCtx.createBiquadFilter();
+            chimeFilter.type = 'lowpass';
+            chimeFilter.frequency.setValueAtTime(1200, now);
+
+            osc.connect(chimeFilter);
+            overtone.connect(chimeFilter);
+            chimeFilter.connect(chimeGain);
+            chimeGain.connect(audioCtx.destination);
+
+            osc.start(now);
+            overtone.start(now);
+            osc.stop(now + 2.6);
+            overtone.stop(now + 2.6);
+        }
+
+        // Mechanical Matrix Rotation Engine via Fixed Buttons
+        function rotateSky(direction) {
+            initAudio();
+            const increment = 25; // Clean stepped movement angles
+            if (direction === 'left') rotY -= increment;
+            if (direction === 'right') rotY += increment;
+            if (direction === 'up') rotX += increment;
+            if (direction === 'down') rotX -= increment;
+
+            // Restrict vertical rotation to keep things visible
+            if (rotX > 45) rotX = 45;
+            if (rotX < -45) rotX = -45;
+
+            updateHorizonTransform();
+        }
+
+        function updateHorizonTransform() {
+            horizon.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+        }
+
+        // Drag to rotate (pointer events)
+        const viewport = document.getElementById('sky-viewport');
+
+        viewport.addEventListener('pointerdown', (e) => {
+            // Don't start drag on interactive elements
+            if (e.target.closest('.ctrl-btn') || e.target.closest('#guide-constellation')) return;
+            initAudio();
+            isDragging = true;
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+            document.body.classList.add('grabbing');
+            // Temporarily remove transition for instant response
+            horizon.style.transition = 'none';
+            e.preventDefault();
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - lastPointerX;
+            const deltaY = e.clientY - lastPointerY;
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+
+            rotY += deltaX * 0.3;
+            rotX += deltaY * 0.3;
+
+            if (rotX > 45) rotX = 45;
+            if (rotX < -45) rotX = -45;
+
+            updateHorizonTransform();
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            document.body.classList.remove('grabbing');
+            // Restore smooth transition
+            horizon.style.transition = 'transform 0.2s cubic-bezier(0.1, 0.8, 0.2, 1)';
+        });
+
+        // Reset view on double-click / double-tap on viewport (not on buttons)
+        viewport.addEventListener('dblclick', (e) => {
+            if (e.target.closest('.ctrl-btn') || e.target.closest('#guide-constellation')) return;
+            rotX = 0;
+            rotY = 0;
+            updateHorizonTransform();
+        });
+
+        // Generate vector cyber shapes (Bunnies, Moons, Cross Stars)
+        const assets = [
+            '<path d="M10,30 Q5,15 12,5 Q18,5 18,22 Q23,5 30,5 Q35,15 30,30 Q35,45 35,55 Q35,65 20,65 Q5,65 5,55 Q5,45 10,30 Z" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+            '<path d="M10,5 A25,25 0 1,0 45,40 A20,20 0 1,1 10,5 Z" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+            '<path d="M25,0 L25,50 M0,25 L50,25 M15,15 L35,35 M15,35 L35,15" fill="none" stroke="currentColor" stroke-width="1"/>'
+        ];
+
+        function populateCosmos() {
+            const count = 26;
+            const colors = ['var(--neon-pink)', 'var(--neon-blue)', 'var(--neon-purple)', 'var(--neon-orange)'];
+            for (let i = 0; i < count; i++) {
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('class', 'ambient-svg');
+                svg.setAttribute('viewBox', '0 0 60 70');
+                svg.style.width = `${Math.random() * 35 + 20}px`;
+                svg.style.height = 'auto';
+                svg.style.left = `${Math.random() * 260 + 20}%`;
+                svg.style.top = `${Math.random() * 260 + 20}%`;
+                svg.style.color = colors[Math.floor(Math.random() * colors.length)];
+                svg.innerHTML = assets[Math.floor(Math.random() * assets.length)];
+                svg.style.animationDelay = `${Math.random() * -30}s`;
+                svg.style.animationDuration = `${Math.random() * 20 + 20}s`;
+                ambientLayer.appendChild(svg);
+            }
+        }
+
+        // Logic progression system tracking
+        function advanceGuide() {
+            initAudio();
+            currentStep++;
+            if (currentStep >= guideSteps.length) {
+                currentStep = 0;
+                clearSafetyRing();
+            }
+
+            const activeData = guideSteps[currentStep];
+            document.getElementById('step-title').innerText = activeData.title;
+            document.getElementById('step-desc').innerText = activeData.desc;
+            document.querySelector('.guide-star').style.filter = `drop-shadow(0 0 20px ${activeData.color})`;
+            starPolygon.setAttribute('fill', activeData.color);
+
+            const scalePitches = [220, 277.18, 329.63, 440, 554.37];
+            playChime(scalePitches[currentStep]);
+
+            if (currentStep === guideSteps.length - 1) {
+                renderSafetyRing();
+            }
+        }
+
+        function renderSafetyRing() {
+            safetyMatrix.innerHTML = '';
+            const w = window.innerWidth * 3;
+            const h = window.innerHeight * 3;
+            safetyMatrix.setAttribute('viewBox', `0 0 ${w} ${h}`);
+            const nodes = 12;
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const radius = 240;
+
+            const points = [];
+            for (let i = 0; i <= nodes; i++) {
+                const angle = (i / nodes) * 2 * Math.PI;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                points.push({ x, y });
+            }
+
+            const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            const pathData = points.map(p => `${p.x},${p.y}`).join(' ');
+            polyline.setAttribute('points', pathData);
+            polyline.setAttribute('class', 'safety-ring-line');
+            polyline.style.opacity = '1';
+            safetyMatrix.appendChild(polyline);
+
+            document.getElementById('step-action').innerText = "PROTECTIVE MATRIX SECURED // TAP TO RESTART";
+            document.getElementById('step-action').style.color = "var(--neon-orange)";
+
+            setTimeout(() => { playChime(440); }, 100);
+            setTimeout(() => { playChime(554.37); }, 250);
+            setTimeout(() => { playChime(659.25); }, 400);
+        }
+
+        function clearSafetyRing() {
+            safetyMatrix.innerHTML = '';
+            document.getElementById('step-action').innerText = "TAP THE FLOATING GUIDE STAR TO ADVANCE";
+            document.getElementById('step-action').style.color = "#64648c";
+        }
+
+        // Initialize cosmos
+        populateCosmos();
+    </script>
+</body>
+</html>
