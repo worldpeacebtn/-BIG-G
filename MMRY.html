@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LexPro – Schwarz-Rot-Gold Notizen & Board</title>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <style>
+        :root {
+            --bg-deep: #0a0a0c;
+            --bg-sidebar: #121216;
+            --bg-card: #1a1a20;
+            --border-color: #2e2e38;
+            --gold: #d4af37;
+            --gold-hover: #f3c653;
+            --red: #b30000;
+            --red-hover: #e60000;
+            --text-main: #f0f0f5;
+            --text-muted: #9e9ea8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Layout & Navigation */
+        aside {
+            width: 300px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1rem;
+            color: var(--gold);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+            background: var(--bg-deep);
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .nav-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 6px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .nav-tab.active {
+            background-color: var(--bg-card);
+            color: var(--gold);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold), #b8972b);
+            color: #000;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            text-align: center;
+        }
+
+        .btn-primary:hover { opacity: 0.9; }
+
+        .sidebar-content {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding: 10px;
+        }
+
+        .folder-group-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin: 12px 0 6px 8px;
+            letter-spacing: 1px;
+        }
+
+        .note-item {
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            border-left: 3px solid transparent;
+            transition: background 0.2s;
+        }
+
+        .note-item:hover { background-color: rgba(255, 255, 255, 0.03); }
+        .note-item.active { background-color: var(--bg-card); border-left-color: var(--gold); }
+
+        .note-item-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .note-item-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Main Workspace */
+        main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-deep);
+            overflow: hidden;
+        }
+
+        .view-section {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .view-section.active { display: flex; }
+
+        .editor-header {
+            padding: 14px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-sidebar);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+        .btn-danger {
+            background-color: transparent;
+            border: 1px solid rgba(179, 0, 0, 0.4);
+            color: #ff6b6b;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .btn-danger:hover { background-color: var(--red); color: #fff; }
+
+        .editor-body {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+            padding-bottom: 40px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        input.form-input, select.form-input {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input.form-input:focus, select.form-input:focus, textarea:focus {
+            border-color: var(--gold);
+        }
+
+        input.note-title-input {
+            background: transparent;
+            border: none;
+            color: var(--gold);
+            font-size: 1.4rem;
+            font-weight: 700;
+            width: 100%;
+            outline: none;
+            border-bottom: 1px solid transparent;
+            padding-bottom: 4px;
+        }
+        input.note-title-input:focus { border-bottom-color: var(--gold); }
+
+        textarea.note-content-input {
+            min-height: 200px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+        }
+
+        /* File Upload & Renderer Section */
+        .attachment-section {
+            background: var(--bg-sidebar);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .attachment-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .media-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+        }
+
+        .media-card header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .media-preview {
+            width: 100%;
+            max-height: 150px;
+            object-fit: contain;
+            border-radius: 4px;
+            background: #000;
+        }
+
+        model-viewer {
+            width: 100%;
+            height: 180px;
+            background-color: #111;
+            border-radius: 4px;
+        }
+
+        /* Board View (Roter Faden) */
+        .board-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+            padding-bottom: 40px;
+        }
+
+        .board-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+            position: relative;
+        }
+
+        .board-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--gold);
+        }
+
+        .board-card-color-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 6px;
+            height: 100%;
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+
+        .board-card h3 {
+            font-size: 1rem;
+            color: var(--text-main);
+            padding-left: 6px;
+        }
+
+        .board-card p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            padding-left: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Tools View (Calculator & Text Decoder) */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .tools-grid { grid-template-columns: 1fr; }
+            aside { position: absolute; height: 100%; z-index: 100; transform: translateX(-100%); }
+            aside.mobile-open { transform: translateX(0); }
+        }
+
+        .tool-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .calc-display {
+            background: var(--bg-deep);
+            border: 1px solid var(--border-color);
+            color: var(--gold);
+            font-size: 1.5rem;
+            padding: 12px;
+            text-align: right;
+            border-radius: 6px;
+            font-family: monospace;
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .calc-btn {
+            background: var(--bg-sidebar);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 12px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .calc-btn:hover { background: rgba(212, 175, 55, 0.2); border-color: var(--gold); }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--gold);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <h1>⚖️ LexPro Workspace</h1>
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="switchTab('notes')">Notizen</button>
+                <button class="nav-tab" onclick="switchTab('board')">Board</button>
+                <button class="nav-tab" onclick="switchTab('tools')">Tools</button>
+            </div>
+            <button class="btn-primary" onclick="createNewNote()">+ Neue Notiz</button>
+        </div>
+        <div class="sidebar-content" id="sidebarList">
+            </div>
+        <div style="padding: 12px; border-top: 1px solid var(--border-color); display: flex; gap: 8px;">
+            <button class="btn-secondary" style="flex:1;" onclick="exportAppBackup()">App sichern</button>
+            <input type="file" id="importFile" style="display:none" onchange="importAppBackup(event)">
+            <button class="btn-secondary" style="flex:1;" onclick="document.getElementById('importFile').click()">Laden</button>
+        </div>
+    </aside>
+
+    <main>
+        <section id="view-notes" class="view-section active">
+            <div class="editor-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="btn-secondary" onclick="toggleMobileSidebar()" style="display: none;" id="mobileMenuBtn">☰ Menü</button>
+                    <span id="lastSaved" style="font-size: 0.8rem; color: var(--text-muted);">Gespeichert</span>
+                </div>
+                <div class="editor-actions">
+                    <button class="btn-secondary" onclick="copyCurrentNote()">Kopieren</button>
+                    <button class="btn-secondary" onclick="downloadSingleNote()">Notiz speichern (.txt)</button>
+                    <button class="btn-danger" onclick="deleteCurrentNote()">Löschen</button>
+                </div>
+            </div>
+            <div class="editor-body">
+                <input type="text" id="noteTitle" class="note-title-input" placeholder="Titel der Notiz..." oninput="autoSave()">
+                
+                <div class="input-row">
+                    <input type="text" id="noteTag" class="form-input" style="flex: 2;" placeholder="Tag / Ordner (z.B. EGMR, Beweise, Finanzen)" oninput="autoSave()">
+                    <select id="noteColor" class="form-input" style="flex: 1;" onchange="autoSave()">
+                        <option value="#d4af37">Gold (Standard)</option>
+                        <option value="#b30000">Rot (Dringend)</option>
+                        <option value="#0055ff">Blau (Behörden)</option>
+                        <option value="#00aa44">Grün (Sicher)</option>
+                        <option value="#9944ff">Lila (Privat)</option>
+                    </select>
+                </div>
+
+                <textarea id="noteContent" class="note-content-input" placeholder="Inhalt, Vorlagen oder Notizen schreiben..." oninput="autoSave()"></textarea>
+
+                <div class="attachment-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="font-size: 0.9rem; color: var(--gold);">Dateien & Medien (MP3, MP4, GLB, PDF, Bilder)</h3>
+                        <input type="file" id="fileUploadInput" style="display: none;" multiple onchange="handleFileUpload(event)">
+                        <button class="btn-secondary" onclick="document.getElementById('fileUploadInput').click()">+ Datei hochladen</button>
+                    </div>
+                    <div class="attachment-list" id="attachmentList">
+                        </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-board" class="view-section">
+            <div class="editor-header">
+                <h2 style="font-size: 1.1rem; color: var(--gold);">Visuelles Board & Roter Faden</h2>
+                <div class="editor-actions">
+                    <select id="boardFilterColor" class="form-input" onchange="renderBoard()">
+                        <option value="all">Alle Farben anzeigen</option>
+                        <option value="#d4af37">Gold</option>
+                        <option value="#b30000">Rot</option>
+                        <option value="#0055ff">Blau</option>
+                        <option value="#00aa44">Grün</option>
+                        <option value="#9944ff">Lila</option>
+                    </select>
+                </div>
+            </div>
+            <div style="padding-top: 16px;">
+                <div class="board-container" id="boardContainer">
+                    </div>
+            </div>
+        </section>
+
+        <section id="view-tools" class="view-section">
+            <div class="editor-header">
+                <h2 style="font-size: 1.1rem; color: var(--gold);">Integrierte Werkzeuge</h2>
+            </div>
+            <div style="padding-top: 20px;">
+                <div class="tools-grid">
+                    <div class="tool-box">
+                        <h3 style="font-size: 0.95rem; color: var(--gold);">Text-Entschäumer (URL / Kodierung reparieren)</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Wandelt fehlerhaft kopierte URL-kodierte Texte (z.B. mit %20, %C3%9C) sofort in normalen Klartext um.</p>
+                        <textarea id="decodeInput" class="form-input" style="min-height: 100px; resize: none;" placeholder="Hier fehlerhaften Text einfügen..."></textarea>
+                        <button class="btn-primary" onclick="decodeTextAction()">Text entschlüsseln & bereinigen</button>
+                        <textarea id="decodeOutput" class="form-input" style="min-height: 100px; resize: none;" readonly placeholder="Bereinigter Text erscheint hier..."></textarea>
+                    </div>
+
+                    <div class="tool-box">
+                        <h3 style="font-size: 0.95rem; color: var(--gold);">Taschenrechner</h3>
+                        <div class="calc-display" id="calcDisplay">0</div>
+                        <div class="calc-grid">
+                            <button class="calc-btn" onclick="calcClear()">C</button>
+                            <button class="calc-btn" onclick="calcAppend('(')">(</button>
+                            <button class="calc-btn" onclick="calcAppend(')')">)</button>
+                            <button class="calc-btn" onclick="calcAppend('/')">/</button>
+                            <button class="calc-btn" onclick="calcAppend('7')">7</button>
+                            <button class="calc-btn" onclick="calcAppend('8')">8</button>
+                            <button class="calc-btn" onclick="calcAppend('9')">9</button>
+                            <button class="calc-btn" onclick="calcAppend('*')">*</button>
+                            <button class="calc-btn" onclick="calcAppend('4')">4</button>
+                            <button class="calc-btn" onclick="calcAppend('5')">5</button>
+                            <button class="calc-btn" onclick="calcAppend('6')">6</button>
+                            <button class="calc-btn" onclick="calcAppend('-')">-</button>
+                            <button class="calc-btn" onclick="calcAppend('1')">1</button>
+                            <button class="calc-btn" onclick="calcAppend('2')">2</button>
+                            <button class="calc-btn" onclick="calcAppend('3')">3</button>
+                            <button class="calc-btn" onclick="calcAppend('+')">+</button>
+                            <button class="calc-btn" onclick="calcAppend('0')" style="grid-column: span 2;">0</button>
+                            <button class="calc-btn" onclick="calcAppend('.')">.</button>
+                            <button class="calc-btn" style="background: var(--gold); color:#000;" onclick="calcCompute()">=</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast" id="toast">Aktion erfolgreich ausgeführt</div>
+
+    <script>
+        // App State
+        let notes = JSON.parse(localStorage.getItem('lex_pro_notes')) || [
+            {
+                id: '1',
+                title: 'EILBEDÜRFTIG: Mandatsanfrage & EGMR',
+                tag: 'EGMR & Recht',
+                color: '#b30000',
+                content: 'BETREFF: EILBEDÜRFTIG: Mandatsanfrage – Akute Lebensgefahr...',
+                attachments: []
+            }
+        ];
+
+        let activeNoteId = notes.length > 0 ? notes[0].id : null;
+
+        // UI Elements
+        const sidebarListEl = document.getElementById('sidebarList');
+        const noteTitleEl = document.getElementById('noteTitle');
+        const noteTagEl = document.getElementById('noteTag');
+        const noteColorEl = document.getElementById('noteColor');
+        const noteContentEl = document.getElementById('noteContent');
+        const attachmentListEl = document.getElementById('attachmentList');
+        const toastEl = document.getElementById('toast');
+
+        // Responsive Check
+        if (window.innerWidth <= 768) {
+            document.getElementById('mobileMenuBtn').style.display = 'inline-block';
+        }
+
+        function showToast(msg) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            setTimeout(() => toastEl.classList.remove('show'), 2000);
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            
+            if (tabName === 'notes') {
+                document.querySelector('button[onclick="switchTab(\'notes\')"]').classList.add('active');
+                document.getElementById('view-notes').classList.add('active');
+            } else if (tabName === 'board') {
+                document.querySelector('button[onclick="switchTab(\'board\')"]').classList.add('active');
+                document.getElementById('view-board').classList.add('active');
+                renderBoard();
+            } else if (tabName === 'tools') {
+                document.querySelector('button[onclick="switchTab(\'tools\')"]').classList.add('active');
+                document.getElementById('view-tools').classList.add('active');
+            }
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('mobile-open');
+            }
+        }
+
+        function toggleMobileSidebar() {
+            document.getElementById('sidebar').classList.toggle('mobile-open');
+        }
+
+        // Render Sidebar grouped by Tags
+        function renderSidebar() {
+            sidebarListEl.innerHTML = '';
+            
+            // Group by tags
+            const groups = {};
+            notes.forEach(note => {
+                const tag = note.tag && note.tag.trim() !== '' ? note.tag.trim() : 'Allgemein';
+                if (!groups[tag]) groups[tag] = [];
+                groups[tag].push(note);
+            });
+
+            for (const [tag, groupNotes] of Object.entries(groups)) {
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'folder-group-title';
+                titleDiv.textContent = `📁 ${tag} (${groupNotes.length})`;
+                sidebarListEl.appendChild(titleDiv);
+
+                groupNotes.forEach(note => {
+                    const item = document.createElement('div');
+                    item.className = `note-item ${note.id === activeNoteId ? 'active' : ''}`;
+                    item.style.borderLeftColor = note.color || '#d4af37';
+                    item.onclick = () => selectNote(note.id);
+
+                    const title = document.createElement('div');
+                    title.className = 'note-item-title';
+                    title.textContent = note.title || 'Unbenannte Notiz';
+
+                    const meta = document.createElement('div');
+                    meta.className = 'note-item-meta';
+                    meta.textContent = `${note.attachments ? note.attachments.length : 0} Datei(en)`;
+
+                    item.appendChild(title);
+                    item.appendChild(meta);
+                    sidebarListEl.appendChild(item);
+                });
+            }
+        }
+
+        function selectNote(id) {
+            activeNoteId = id;
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                noteTitleEl.value = note.title || '';
+                noteTagEl.value = note.tag || '';
+                noteColorEl.value = note.color || '#d4af37';
+                noteContentEl.value = note.content || '';
+                renderAttachments();
+            }
+            renderSidebar();
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('mobile-open');
+            }
+        }
+
+        function createNewNote() {
+            const newId = Date.now().toString();
+            const newNote = {
+                id: newId,
+                title: 'Neue Notiz',
+                tag: 'Allgemein',
+                color: '#d4af37',
+                content: '',
+                attachments: []
+            };
+            notes.unshift(newNote);
+            selectNote(newId);
+            saveToStorage();
+        }
+
+        function autoSave() {
+            if (!activeNoteId) return;
+            const note = notes.find(n => n.id === activeNoteId);
+            if (note) {
+                note.title = noteTitleEl.value;
+                note.tag = noteTagEl.value;
+                note.color = noteColorEl.value;
+                note.content = noteContentEl.value;
+                saveToStorage();
+                renderSidebar();
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('lex_pro_notes', JSON.stringify(notes));
+        }
+
+        function deleteCurrentNote() {
+            if (notes.length <= 1) {
+                alert('Die letzte Notiz kann nicht gelöscht werden.');
+                return;
+            }
+            if (confirm('Möchten Sie diese Notiz wirklich löschen?')) {
+                notes = notes.filter(n => n.id !== activeNoteId);
+                activeNoteId = notes[0].id;
+                selectNote(activeNoteId);
+                saveToStorage();
+            }
+        }
+
+        function downloadSingleNote() {
+            const note = notes.find(n => n.id === activeNoteId);
+            if (!note) return;
+            const blob = new Blob([`Titel: ${note.title}\nTag: ${note.tag}\n\n${note.content}`], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${note.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+            a.click();
+            showToast('Notiz heruntergeladen');
+        }
+
+        // File Upload and Native Rendering
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            const note = notes.find(n => n.id === activeNoteId);
+            if (!note) return;
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (!note.attachments) note.attachments = [];
+                    note.attachments.push({
+                        name: file.name,
+                        type: file.type,
+                        data: e.target.result
+                    });
+                    saveToStorage();
+                    renderAttachments();
+                    showToast(`Datei ${file.name} hinzugefügt`);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderAttachments() {
+            attachmentListEl.innerHTML = '';
+            const note = notes.find(n => n.id === activeNoteId);
+            if (!note || !note.attachments) return;
+
+            note.attachments.forEach((att, index) => {
+                const card = document.createElement('div');
+                card.className = 'media-card';
+
+                const header = document.createElement('header');
+                header.innerHTML = `<span>${att.name}</span> <button class="btn-danger" style="padding:2px 6px;font-size:0.65rem;" onclick="removeAttachment(${index})">X</button>`;
+                card.appendChild(header);
+
+                // Render based on MIME type
+                if (att.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = att.data;
+                    img.className = 'media-preview';
+                    card.appendChild(img);
+                } else if (att.type.startsWith('audio/')) {
+                    const audio = document.createElement('audio');
+                    audio.src = att.data;
+                    audio.controls = true;
+                    audio.style.width = '100%';
+                    card.appendChild(audio);
+                } else if (att.type.startsWith('video/')) {
+                    const video = document.createElement('video');
+                    video.src = att.data;
+                    video.controls = true;
+                    video.className = 'media-preview';
+                    card.appendChild(video);
+                } else if (att.name.endsWith('.glb') || att.type.includes('model')) {
+                    const viewer = document.createElement('model-viewer');
+                    viewer.src = att.data;
+                    viewer.setAttribute('camera-controls', '');
+                    viewer.setAttribute('auto-rotate', '');
+                    card.appendChild(viewer);
+                } else if (att.type === 'application/pdf') {
+                    const embed = document.createElement('embed');
+                    embed.src = att.data;
+                    embed.type = 'application/pdf';
+                    embed.style.width = '100%';
+                    embed.style.height = '140px';
+                    card.appendChild(embed);
+                } else {
+                    const info = document.createElement('div');
+                    info.style.fontSize = '0.8rem';
+                    info.style.color = 'var(--text-muted)';
+                    info.textContent = `Dateiformat gespeichert.`;
+                    card.appendChild(info);
+                }
+
+                attachmentListEl.appendChild(card);
+            });
+        }
+
+        function removeAttachment(index) {
+            const note = notes.find(n => n.id === activeNoteId);
+            if (note && note.attachments) {
+                note.attachments.splice(index, 1);
+                saveToStorage();
+                renderAttachments();
+                showToast('Datei entfernt');
+            }
+        }
+
+        // Board Render Function
+        function renderBoard() {
+            const container = document.getElementById('boardContainer');
+            container.innerHTML = '';
+            const filterColor = document.getElementById('boardFilterColor').value;
+
+            notes.forEach(note => {
+                if (filterColor !== 'all' && note.color !== filterColor) return;
+
+                const card = document.createElement('div');
+                card.className = 'board-card';
+                card.onclick = () => {
+                    selectNote(note.id);
+                    switchTab('notes');
+                };
+
+                const indicator = document.createElement('div');
+                indicator.className = 'board-card-color-indicator';
+                indicator.style.backgroundColor = note.color || '#d4af37';
+                card.appendChild(indicator);
+
+                const title = document.createElement('h3');
+                title.textContent = note.title || 'Unbenannt';
+                card.appendChild(title);
+
+                const p = document.createElement('p');
+                p.textContent = note.content || 'Kein Inhalt...';
+                card.appendChild(p);
+
+                container.appendChild(card);
+            });
+        }
+
+        // App Backup Export/Import
+        function exportAppBackup() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", "lexpro_backup_" + Date.now() + ".json");
+            dlAnchor.click();
+            showToast('App-Backup erfolgreich heruntergeladen');
+        }
+
+        function importAppBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedNotes = JSON.parse(e.target.result);
+                    if (Array.isArray(importedNotes)) {
+                        notes = importedNotes;
+                        activeNoteId = notes.length > 0 ? notes[0].id : null;
+                        saveToStorage();
+                        renderSidebar();
+                        if (activeNoteId) selectNote(activeNoteId);
+                        showToast('Backup erfolgreich eingespielt');
+                    }
+                } catch (err) {
+                    alert('Fehler beim Einlesen der Backup-Datei.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Tools Logic: Text Decoder (für fehlerhafte Kopien / URL-Code)
+        function decodeTextAction() {
+            const input = document.getElementById('decodeInput').value;
+            try {
+                // Versuche mehrfaches Decodieren falls doppelt kodiert
+                let decoded = input;
+                for (let i = 0; i < 2; i++) {
+                    decoded = decodeURIComponent(decoded.replace(/\+/g, ' '));
+                }
+                document.getElementById('decodeOutput').value = decoded;
+                showToast('Text erfolgreich entschlüsselt');
+            } catch (e) {
+                // Fallback falls es kein reiner URI-String ist
+                try {
+                    document.getElementById('decodeOutput').value = decodeURI(input);
+                } catch (err) {
+                    document.getElementById('decodeOutput').value = "Fehler: Konnte den Text nicht dekodieren.";
+                }
+            }
+        }
+
+        // Calculator Logic
+        let calcVal = '';
+        function calcAppend(char) {
+            calcVal += char;
+            document.getElementById('calcDisplay').textContent = calcVal;
+        }
+        function calcClear() {
+            calcVal = '';
+            document.getElementById('calcDisplay').textContent = '0';
+        }
+        function calcCompute() {
+            try {
+                calcVal = eval(calcVal).toString();
+                document.getElementById('calcDisplay').textContent = calcVal;
+            } catch (e) {
+                document.getElementById('calcDisplay').textContent = 'Fehler';
+                calcVal = '';
+            }
+        }
+
+        // Initial Load
+        if (activeNoteId) {
+            selectNote(activeNoteId);
+        }
+    </script>
+</body>
+</html>
