@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LexPro Mobile App</title>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <style>
+        :root {
+            --bg-deep: #0a0a0c;
+            --bg-sidebar: #121216;
+            --bg-card: #1a1a20;
+            --border-color: #2e2e38;
+            --gold: #d4af37;
+            --gold-hover: #f3c653;
+            --red: #b30000;
+            --red-hover: #e60000;
+            --text-main: #f0f0f5;
+            --text-muted: #9e9ea8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            padding-bottom: 65px; /* Platz für Bottom Nav */
+        }
+
+        /* Top Header */
+        header.app-header {
+            background-color: var(--bg-sidebar);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 56px;
+            flex-shrink: 0;
+        }
+
+        header.app-header h1 {
+            font-size: 1rem;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Main Workspace Views */
+        .view-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .view-container.active {
+            display: flex;
+        }
+
+        /* Bottom Navigation Bar (App Style) */
+        nav.bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 65px;
+            background-color: var(--bg-sidebar);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .nav-item {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            flex: 1;
+            padding: 8px 0;
+            transition: color 0.2s;
+        }
+
+        .nav-item span.icon {
+            font-size: 1.2rem;
+        }
+
+        .nav-item.active {
+            color: var(--gold);
+        }
+
+        /* Buttons & Inputs */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold), #b8972b);
+            color: #000;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .btn-danger {
+            background-color: rgba(179, 0, 0, 0.2);
+            border: 1px solid rgba(179, 0, 0, 0.4);
+            color: #ff6b6b;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        input.form-input, select.form-input, textarea.form-input {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        input.form-input:focus, select.form-input:focus, textarea.form-input:focus {
+            border-color: var(--gold);
+        }
+
+        /* Notizen Editor */
+        .note-editor-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Notizen Liste & Schnell-Auswahl */
+        .notes-select-bar {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            flex-shrink: 0;
+        }
+
+        .note-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .note-pill.active {
+            background: var(--gold);
+            color: #000;
+            font-weight: 600;
+            border-color: var(--gold);
+        }
+
+        /* Medien Kacheln */
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .media-tile {
+            background: var(--bg-deep);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            position: relative;
+            height: 110px;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .media-tile img {
+            width: 100%;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .media-tile .file-icon {
+            font-size: 2rem;
+        }
+
+        .media-tile span {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Popup Modals (Übersetzer, Taschenrechner, Viewer) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 16px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-sidebar);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .modal-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1rem;
+            color: var(--gold);
+        }
+
+        .modal-body {
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Taschenrechner Grid */
+        .calc-display {
+            background: var(--bg-deep);
+            border: 1px solid var(--border-color);
+            color: var(--gold);
+            font-size: 1.6rem;
+            padding: 14px;
+            text-align: right;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .calc-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 16px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .calc-btn:active { background: var(--gold); color: #000; }
+
+        /* Board Grid */
+        .board-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .board-node {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-left: 5px solid var(--gold);
+            border-radius: 8px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .toast {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--gold);
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 3000;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <h1>⚖️ LexPro Mobile</h1>
+        <div class="header-actions">
+            <button class="btn-primary" onclick="createNewNote()" style="padding: 6px 12px; font-size: 0.8rem;">+ Neu</button>
+        </div>
+    </header>
+
+    <div class="toast" id="toast">Erfolgreich gespeichert</div>
+
+    <section id="view-notes" class="view-container active">
+        <div class="notes-select-bar" id="notesPillsContainer">
+            </div>
+
+        <div class="note-editor-card">
+            <input type="text" id="noteTitle" class="form-input" style="font-size: 1.2rem; font-weight: bold; color: var(--gold); border:none; background:transparent; padding:0;" placeholder="Titel..." oninput="autoSave()">
+            
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="noteTag" class="form-input" placeholder="Tag / Ordner (z.B. EGMR, Beweise)" oninput="autoSave()">
+                <select id="noteColor" class="form-input" style="width: 110px;" onchange="autoSave()">
+                    <option value="#d4af37">Gold</option>
+                    <option value="#b30000">Rot</option>
+                    <option value="#0055ff">Blau</option>
+                    <option value="#00aa44">Grün</option>
+                </select>
+            </div>
+
+            <textarea id="noteContent" class="form-input" style="min-height: 180px; resize: none;" placeholder="Inhalt oder Vorlage einfügen..." oninput="autoSave()"></textarea>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.85rem; color: var(--gold); font-weight: bold;">Anhänge & Medien</span>
+                    <input type="file" id="fileUploadInput" style="display: none;" multiple onchange="handleFileUpload(event)">
+                    <button class="btn-secondary" onclick="document.getElementById('fileUploadInput').click()">+ Datei hochladen</button>
+                </div>
+                <div class="media-grid" id="mediaGrid">
+                    </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <button class="btn-secondary" style="flex:1;" onclick="downloadSingleNote()">Als .txt speichern</button>
+                <button class="btn-danger" onclick="deleteCurrentNote()">Löschen</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="view-board" class="view-container">
+        <h2 style="font-size: 1rem; color: var(--gold);">Roter Faden & Board-Übersicht</h2>
+        <div class="board-grid" id="boardGrid">
+            </div>
+    </section>
+
+    <section id="view-tools" class="view-container">
+        <h2 style="font-size: 1rem; color: var(--gold);">Schnell-Werkzeuge</h2>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <button class="btn-primary" onclick="openModal('modalDecoder')" style="padding: 14px; text-align: left; display: flex; justify-content: space-between;">
+                <span>🔤 Text-Entschäumer (URL / Kodierung reparieren)</span> <span>➔</span>
+            </button>
+            <button class="btn-primary" onclick="openModal('modalCalc')" style="padding: 14px; text-align: left; display: flex; justify-content: space-between;">
+                <span>🔢 Taschenrechner öffnen</span> <span>➔</span>
+            </button>
+        </div>
+    </section>
+
+    <section id="view-backup" class="view-container">
+        <h2 style="font-size: 1rem; color: var(--gold);">App-Sicherung (All-in-One)</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Sichern Sie Ihre gesamte App inklusive aller Notizen, Tags und hochgeladenen Dateien als Datei oder laden Sie ein Backup ein.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+            <button class="btn-primary" onclick="exportAppBackup()">Komplettes App-Backup herunterladen</button>
+            
+            <input type="file" id="importFile" style="display:none" onchange="importAppBackup(event)">
+            <button class="btn-secondary" onclick="document.getElementById('importFile').click()" style="padding: 14px;">Backup-Datei wieder einspielen</button>
+        </div>
+    </section>
+
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('notes', this)">
+            <span class="icon">📝</span> Notizen
+        </button>
+        <button class="nav-item" onclick="switchTab('board', this)">
+            <span class="icon">🧭</span> Board
+        </button>
+        <button class="nav-item" onclick="switchTab('tools', this)">
+            <span class="icon">🛠️</span> Tools
+        </button>
+        <button class="nav-item" onclick="switchTab('backup', this)">
+            <span class="icon">💾</span> Backup
+        </button>
+    </nav>
+
+    <div class="modal-overlay" id="modalCalc">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Taschenrechner</h3>
+                <button class="btn-secondary" onclick="closeModal('modalCalc')">X Schließen</button>
+            </div>
+            <div class="modal-body">
+                <div class="calc-display" id="calcDisplay">0</div>
+                <div class="calc-grid">
+                    <button class="calc-btn" onclick="calcClear()">C</button>
+                    <button class="calc-btn" onclick="calcAppend('(')">(</button>
+                    <button class="calc-btn" onclick="calcAppend(')')">)</button>
+                    <button class="calc-btn" onclick="calcAppend('/')">/</button>
+                    <button class="calc-btn" onclick="calcAppend('7')">7</button>
+                    <button class="calc-btn" onclick="calcAppend('8')">8</button>
+                    <button class="calc-btn" onclick="calcAppend('9')">9</button>
+                    <button class="calc-btn" onclick="calcAppend('*')">*</button>
+                    <button class="calc-btn" onclick="calcAppend('4')">4</button>
+                    <button class="calc-btn" onclick="calcAppend('5')">5</button>
+                    <button class="calc-btn" onclick="calcAppend('6')">6</button>
+                    <button class="calc-btn" onclick="calcAppend('-')">-</button>
+                    <button class="calc-btn" onclick="calcAppend('1')">1</button>
+                    <button class="calc-btn" onclick="calcAppend('2')">2</button>
+                    <button class="calc-btn" onclick="calcAppend('3')">3</button>
+                    <button class="calc-btn" onclick="calcAppend('+')">+</button>
+                    <button class="calc-btn" onclick="calcAppend('0')" style="grid-column: span 2;">0</button>
+                    <button class="calc-btn" onclick="calcAppend('.')">.</button>
+                    <button class="calc-btn" style="background:var(--gold); color:#000;" onclick="calcCompute()">=</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalDecoder">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Text-Entschäumer</h3>
+                <button class="btn-secondary" onclick="closeModal('modalDecoder')">X Schließen</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Fügen Sie fehlerhaft kodierten Text (z.B. mit %20) ein:</p>
+                <textarea id="decodeInput" class="form-input" style="min-height: 80px;" placeholder="Text einfügen..."></textarea>
+                <button class="btn-primary" onclick="decodeTextAction()">Klartext wiederherstellen</button>
+                <textarea id="decodeOutput" class="form-input" style="min-height: 80px;" readonly placeholder="Bereinigter Text..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalViewer">
+        <div class="modal-content" style="max-width: 95vw; height: 85vh;">
+            <div class="modal-header">
+                <h3 id="viewerTitle">Datei-Vorschau</h3>
+                <button class="btn-secondary" onclick="closeModal('modalViewer')">X Schließen</button>
+            </div>
+            <div class="modal-body" id="viewerBody" style="align-items: center; justify-content: center; height: 100%;">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        // Data State
+        let notes = JSON.parse(localStorage.getItem('lex_mobile_notes')) || [
+            {
+                id: '1',
+                title: 'EILBEDÜRFTIG: Mandatsanfrage',
+                tag: 'EGMR',
+                color: '#b30000',
+                content: 'BETREFF: EILBEDÜRFTIG: Mandatsanfrage...',
+                attachments: []
+            }
+        ];
+
+        let activeNoteId = notes.length > 0 ? notes[0].id : null;
+
+        const toastEl = document.getElementById('toast');
+        function showToast(msg) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            setTimeout(() => toastEl.classList.remove('show'), 2000);
+        }
+
+        // Navigation Tab Switching
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            document.getElementById('view-' + tabId).classList.add('active');
+            btn.classList.add('active');
+
+            if (tabId === 'board') renderBoard();
+        }
+
+        // Modal Steuerung
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        // Render Notizen Schnell-Pills & Editor
+        function renderNotes() {
+            const container = document.getElementById('notesPillsContainer');
+            container.innerHTML = '';
+
+            notes.forEach(note => {
+                const pill = document.createElement('div');
+                pill.className = `note-pill ${note.id === activeNoteId ? 'active' : ''}`;
+                pill.textContent = note.title || 'Unbenannt';
+                pill.style.borderLeft = `4px solid ${note.color || '#d4af37'}`;
+                pill.onclick = () => selectNote(note.id);
+                container.appendChild(pill);
+            });
+
+            const activeNote = notes.find(n => n.id === activeNoteId);
+            if (activeNote) {
+                document.getElementById('noteTitle').value = activeNote.title || '';
+                document.getElementById('noteTag').value = activeNote.tag || '';
+                document.getElementById('noteColor').value = activeNote.color || '#d4af37';
+                document.getElementById('noteContent').value = activeNote.content || '';
+                renderMediaGrid(activeNote);
+            }
+        }
+
+        function selectNote(id) {
+            activeNoteId = id;
+            renderNotes();
+        }
+
+        function createNewNote() {
+            const newId = Date.now().toString();
+            const newNote = {
+                id: newId,
+                title: 'Neue Notiz',
+                tag: 'Allgemein',
+                color: '#d4af37',
+                content: '',
+                attachments: []
+            };
+            notes.unshift(newNote);
+            selectNote(newId);
+            saveToStorage();
+            showToast('Neue Notiz erstellt');
+        }
+
+        function autoSave() {
+            if (!activeNoteId) return;
+            const note = notes.find(n => n.id === activeNoteId);
+            if (note) {
+                note.title = document.getElementById('noteTitle').value;
+                note.tag = document.getElementById('noteTag').value;
+                note.color = document.getElementById('noteColor').value;
+                note.content = document.getElementById('noteContent').value;
+                saveToStorage();
+                renderNotes();
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('lex_mobile_notes', JSON.stringify(notes));
+        }
+
+        function deleteCurrentNote() {
+            if (notes.length <= 1) {
+                alert('Die letzte Notiz kann nicht gelöscht werden.');
+                return;
+            }
+            if (confirm('Notiz wirklich löschen?')) {
+                notes = notes.filter(n => n.id !== activeNoteId);
+                activeNoteId = notes[0].id;
+                selectNote(activeNoteId);
+                saveToStorage();
+                showToast('Notiz gelöscht');
+            }
+        }
+
+        function downloadSingleNote() {
+            const note = notes.find(n => n.id === activeNoteId);
+            if (!note) return;
+            const blob = new Blob([`Titel: ${note.title}\nTag: ${note.tag}\n\n${note.content}`], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${note.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+            a.click();
+            showToast('Als .txt heruntergeladen');
+        }
+
+        // File Upload & Interactive Kacheln
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            const note = notes.find(n => n.id === activeNoteId);
+            if (!note) return;
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (!note.attachments) note.attachments = [];
+                    note.attachments.push({
+                        name: file.name,
+                        type: file.type,
+                        data: e.target.result
+                    });
+                    saveToStorage();
+                    renderMediaGrid(note);
+                    showToast(`Datei ${file.name} hinzugefügt`);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderMediaGrid(note) {
+            const grid = document.getElementById('mediaGrid');
+            grid.innerHTML = '';
+            if (!note.attachments) return;
+
+            note.attachments.forEach((att, index) => {
+                const tile = document.createElement('div');
+                tile.className = 'media-tile';
+                tile.onclick = () => openMediaViewer(att);
+
+                if (att.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = att.data;
+                    tile.appendChild(img);
+                } else {
+                    const icon = document.createElement('div');
+                    icon.className = 'file-icon';
+                    icon.textContent = att.type.includes('audio') ? '🎵' : att.type.includes('video') ? '🎬' : att.type.includes('pdf') ? '📄' : '📦';
+                    tile.appendChild(icon);
+                }
+
+                const name = document.createElement('span');
+                name.textContent = att.name;
+                tile.appendChild(name);
+
+                grid.appendChild(tile);
+            });
+        }
+
+        function openMediaViewer(att) {
+            document.getElementById('viewerTitle').textContent = att.name;
+            const body = document.getElementById('viewerBody');
+            body.innerHTML = '';
+
+            if (att.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = att.data;
+                img.style.cssText = 'max-width:100%; max-height:70vh; object-fit:contain;';
+                body.appendChild(img);
+            } else if (att.type.startsWith('audio/')) {
+                const audio = document.createElement('audio');
+                audio.src = att.data;
+                audio.controls = true;
+                audio.style.width = '100%';
+                body.appendChild(audio);
+            } else if (att.type.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = att.data;
+                video.controls = true;
+                video.style.cssText = 'max-width:100%; max-height:70vh;';
+                body.appendChild(video);
+            } else if (att.name.endsWith('.glb')) {
+                const viewer = document.createElement('model-viewer');
+                viewer.src = att.data;
+                viewer.setAttribute('camera-controls', '');
+                viewer.setAttribute('auto-rotate', '');
+                viewer.style.cssText = 'width:100%; height:70vh; background:#111;';
+                body.appendChild(viewer);
+            } else if (att.type === 'application/pdf') {
+                const embed = document.createElement('embed');
+                embed.src = att.data;
+                embed.type = 'application/pdf';
+                embed.style.cssText = 'width:100%; height:70vh;';
+                body.appendChild(embed);
+            } else {
+                body.innerHTML = `<p style="color:var(--text-muted)">Vorschau für diesen Dateityp nicht direkt im Browser möglich.</p>`;
+            }
+
+            openModal('modalViewer');
+        }
+
+        // Board Render
+        function renderBoard() {
+            const grid = document.getElementById('boardGrid');
+            grid.innerHTML = '';
+            notes.forEach(note => {
+                const node = document.createElement('div');
+                node.className = 'board-node';
+                node.style.borderLeftColor = note.color || '#d4af37';
+                node.onclick = () => {
+                    selectNote(note.id);
+                    switchTab('notes', document.querySelectorAll('.nav-item')[0]);
+                };
+                node.innerHTML = `<strong>${note.title || 'Unbenannt'}</strong><span style="font-size:0.75rem; color:var(--text-muted);">Tag: ${note.tag || 'Allgemein'}</span>`;
+                grid.appendChild(node);
+            });
+        }
+
+        // App Backup & Import
+        function exportAppBackup() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", "lexpro_komplett_backup_" + Date.now() + ".json");
+            dlAnchor.click();
+            showToast('Komplett-Backup heruntergeladen');
+        }
+
+        function importAppBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        notes = imported;
+                        activeNoteId = notes.length > 0 ? notes[0].id : null;
+                        saveToStorage();
+                        renderNotes();
+                        showToast('Backup erfolgreich eingespielt');
+                    }
+                } catch (err) {
+                    alert('Fehler beim Einlesen der Backup-Datei.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Text Decoder Logic
+        function decodeTextAction() {
+            const input = document.getElementById('decodeInput').value;
+            try {
+                let decoded = input;
+                for(let i=0; i<2; i++) decoded = decodeURIComponent(decoded.replace(/\+/g, ' '));
+                document.getElementById('decodeOutput').value = decoded;
+                showToast('Entschlüsselt');
+            } catch(e) {
+                document.getElementById('decodeOutput').value = "Fehler beim Dekodieren.";
+            }
+        }
+
+        // Taschenrechner Logic
+        let calcVal = '';
+        function calcAppend(c) { calcVal += c; document.getElementById('calcDisplay').textContent = calcVal; }
+        function calcClear() { calcVal = ''; document.getElementById('calcDisplay').textContent = '0'; }
+        function calcCompute() {
+            try {
+                calcVal = eval(calcVal).toString();
+                document.getElementById('calcDisplay').textContent = calcVal;
+            } catch(e) {
+                document.getElementById('calcDisplay').textContent = 'Fehler';
+                calcVal = '';
+            }
+        }
+
+        // Init
+        if (activeNoteId) selectNote(activeNoteId);
+    </script>
+</body>
+</html>
